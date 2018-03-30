@@ -1,5 +1,7 @@
 package fi.tkgwf.ruuvi;
 
+import com.google.gson.Gson;
+import fi.tkgwf.ruuvi.bean.GWData;
 import fi.tkgwf.ruuvi.bean.HCIData;
 import fi.tkgwf.ruuvi.config.Config;
 import fi.tkgwf.ruuvi.db.DBConnection;
@@ -11,6 +13,7 @@ import fi.tkgwf.ruuvi.utils.HCIParser;
 import fi.tkgwf.ruuvi.utils.InfluxDataMigrator;
 import fi.tkgwf.ruuvi.utils.MeasurementValueCalculator;
 import fi.tkgwf.ruuvi.handler.impl.DataFormatV5;
+import fi.tkgwf.ruuvi.utils.GWParser;
 import fi.tkgwf.ruuvi.utils.Utils;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -19,8 +22,16 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.AbstractHandler;
 
 public class Main {
 
@@ -42,7 +53,15 @@ public class Main {
         } else {
             Main m = new Main();
             m.initializeHandlers();
-            if (!m.run()) {
+            Supplier<Boolean> runFunc;
+            if (args.length >= 1 && args[0].equalsIgnoreCase("gw")) {
+                LOG.info("Starting in GW mode");
+                runFunc = m::runGw;
+            } else {
+                LOG.info("Starting in hcidump mode");
+                runFunc = m::runHcidump;
+            }
+            if (!runFunc.get()) {
                 System.exit(1);
             }
         }
@@ -66,11 +85,11 @@ public class Main {
     }
 
     /**
-     * Run the collector.
+     * Run the collector in hcidump mode.
      *
      * @return true if the run ends gracefully, false in case of severe errors
      */
-    private boolean run() {
+    private boolean runHcidump() {
         BufferedReader reader;
         try {
             reader = startHciListeners();
@@ -118,5 +137,61 @@ public class Main {
             db.close();
         }
         return true;
+    }
+
+    /**
+     * Run the collector in gw mode.
+     *
+     * @return true if the run ends gracefully, false in case of severe errors
+     */
+    private boolean runGw() {
+        try {
+            DBConnection db = Config.getDBConnection();
+            GWParser parser = new GWParser();
+            Gson gson = new Gson();
+            Server server = new Server(16768);
+            server.setHandler(new AbstractHandler() {
+                @Override
+                public void handle(String target, Request req, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+                    if (StringUtils.isEmpty(target) || !target.startsWith("/ruuvi")) {
+                        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                        req.setHandled(true);
+                        return;
+                    }
+                    try {
+                        String body = IOUtils.toString(req.getReader());
+                        response.setContentType("text/plain;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        response.getWriter().println("OK");
+                        req.setHandled(true);
+
+                        GWData[] data = gson.fromJson(body, GWData[].class);
+                        for (GWData d : data) {
+                            HCIData hciData = parser.readData(d);
+                            if (hciData != null) {
+                                beaconHandlers.stream()
+                                        .map(handler -> handler.handle(hciData))
+                                        .filter(Objects::nonNull)
+                                        .map(MeasurementValueCalculator::calculateAllValues)
+                                        .forEach(db::save);
+                            } else {
+                                if (d != null && !"Gateway".equals(d.type)) {
+                                    LOG.warn("Didn't get data from " + d);
+                                    LOG.debug("Target: " + target + " Method: " + request.getMethod() + " Body: " + body);
+                                }
+                            }
+                        }
+                    } catch (Exception ex) {
+                        LOG.error("Unexpected exception ", ex);
+                    }
+                }
+            });
+            server.start();
+            server.join();
+            return true;
+        } catch (Exception ex) {
+            LOG.error("Unexpected error occurred", ex);
+            return false;
+        }
     }
 }

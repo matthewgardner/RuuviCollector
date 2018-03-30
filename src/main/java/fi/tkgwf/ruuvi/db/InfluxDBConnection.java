@@ -16,7 +16,7 @@ public class InfluxDBConnection implements DBConnection {
         influxDB = InfluxDBFactory.connect(Config.getInfluxUrl(), Config.getInfluxUser(), Config.getInfluxPassword());
         influxDB.setDatabase(Config.getInfluxDatabase());
         influxDB.enableGzip();
-        influxDB.enableBatch(2000, 100, TimeUnit.MILLISECONDS); // TODO: make these configurable
+//        influxDB.enableBatch(2000, 100, TimeUnit.MILLISECONDS); // TODO: make these configurable
     }
 
     @Override
