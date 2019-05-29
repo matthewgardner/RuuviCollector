@@ -2,6 +2,7 @@ package fi.tkgwf.ruuvi.db;
 
 import fi.tkgwf.ruuvi.bean.EnhancedRuuviMeasurement;
 import org.apache.log4j.Logger;
+import org.influxdb.dto.Point;
 
 public class DummyDBConnection implements DBConnection {
 
@@ -12,6 +13,10 @@ public class DummyDBConnection implements DBConnection {
         LOG.debug(measurement);
     }
 
+    public void save(Point point) {
+        LOG.debug(point);
+    }
+    
     @Override
     public void close() {
     }

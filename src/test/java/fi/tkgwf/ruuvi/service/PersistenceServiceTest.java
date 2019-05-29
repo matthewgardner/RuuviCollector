@@ -10,6 +10,8 @@ import fi.tkgwf.ruuvi.handler.BeaconHandler;
 import fi.tkgwf.ruuvi.strategy.LimitingStrategy;
 import fi.tkgwf.ruuvi.utils.HCIParser;
 import java.util.ArrayList;
+
+import org.influxdb.dto.Point;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -84,27 +86,33 @@ class PersistenceServiceTest {
         service.store(withAcceleration(withRssi(handler.handle(hciData).get(), 1), 1d)); // Store: first instance
         service.store(withAcceleration(withRssi(handler.handle(hciData).get(), 2), 1d)); // Not: no time passed
         setClockToMilliseconds(1000);
-        service.store(withAcceleration(withRssi(handler.handle(hciData).get(), 3), 1d)); // Not: still not enough time passed
+        service.store(withAcceleration(withRssi(handler.handle(hciData).get(), 3), 1d)); // Not: still not enough time
+                                                                                         // passed
         setClockToMilliseconds(3000);
         service.store(withAcceleration(withRssi(handler.handle(hciData).get(), 4), 1d)); // Not: same as above
         service.store(withAcceleration(withRssi(handler.handle(hciData2).get(), 5), 1d)); // Store: first instance
         setClockToMilliseconds(6000);
-        service.store(withAcceleration(withRssi(handler.handle(hciData).get(), 6), 1.99d)); // Not: still not enough time passed; not using movement detection
+        service.store(withAcceleration(withRssi(handler.handle(hciData).get(), 6), 1.99d)); // Not: still not enough
+                                                                                            // time passed; not using
+                                                                                            // movement detection
         setClockToMilliseconds(9000);
         service.store(withAcceleration(withRssi(handler.handle(hciData2).get(), 7), 1.99d)); // Store: movement detected
         setClockToMilliseconds(10000);
-        service.store(withAcceleration(withRssi(handler.handle(hciData).get(), 8), 1d)); // Store: enough time has passed
+        service.store(withAcceleration(withRssi(handler.handle(hciData).get(), 8), 1d)); // Store: enough time has
+                                                                                         // passed
         service.store(withAcceleration(withRssi(handler.handle(hciData2).get(), 9), 1d)); // Store: movement detected
         setClockToMilliseconds(11000);
         service.store(withAcceleration(withRssi(handler.handle(hciData).get(), 10), 1d)); // Not: not enough time passed
-        service.store(withAcceleration(withRssi(handler.handle(hciData2).get(), 11), 1d)); // Store: happens right after movement was detected
+        service.store(withAcceleration(withRssi(handler.handle(hciData2).get(), 11), 1d)); // Store: happens right after
+                                                                                           // movement was detected
         setClockToMilliseconds(12000);
-        service.store(withAcceleration(withRssi(handler.handle(hciData2).get(), 12), 1d)); // Not: no movement and not enough time passed
+        service.store(withAcceleration(withRssi(handler.handle(hciData2).get(), 12), 1d)); // Not: no movement and not
+                                                                                           // enough time passed
         setClockToMilliseconds(90000);
         service.store(withAcceleration(withRssi(handler.handle(hciData2).get(), 13), 1d)); // Store: enough time passed
 
         final List<EnhancedRuuviMeasurement> results = mockConnection.getMeasurements();
-//        assertEquals(8, results.size());
+        // assertEquals(8, results.size());
         assertEquals(1, results.get(0).getRssi().intValue());
         assertEquals(5, results.get(1).getRssi().intValue());
         assertEquals(7, results.get(2).getRssi().intValue());
@@ -115,7 +123,8 @@ class PersistenceServiceTest {
         assertEquals(13, results.get(7).getRssi().intValue());
     }
 
-    private EnhancedRuuviMeasurement withAcceleration(final EnhancedRuuviMeasurement measurement, double accelerationX) {
+    private EnhancedRuuviMeasurement withAcceleration(final EnhancedRuuviMeasurement measurement,
+            double accelerationX) {
         measurement.setAccelerationX(accelerationX);
         return measurement;
     }
@@ -150,6 +159,11 @@ class PersistenceServiceTest {
 
         boolean isCloseCalled() {
             return closeCalled;
+        }
+
+        @Override
+        public void save(Point point) {
+
         }
     }
 

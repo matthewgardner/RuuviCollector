@@ -4,6 +4,8 @@ import fi.tkgwf.ruuvi.bean.EnhancedRuuviMeasurement;
 import fi.tkgwf.ruuvi.config.Config;
 import fi.tkgwf.ruuvi.config.ConfigTest;
 import fi.tkgwf.ruuvi.db.DBConnection;
+
+import org.influxdb.dto.Point;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,25 +36,24 @@ class MainTest {
 
     @Test
     void integrationTest() {
-        // Setup the test. Use two devices and change one variable for each hcidump line so that the messages
+        // Setup the test. Use two devices and change one variable for each hcidump line
+        // so that the messages
         // can be told apart at the end.
 
         final String hcidataOfDevice1 = TestFixture.getDataFormat3Message();
-        final String hcidata2OfDevice2 = TestFixture.getDataFormat3Message()
-            .replace("AA", "BB"); // Changing the MAC address
+        final String hcidata2OfDevice2 = TestFixture.getDataFormat3Message().replace("AA", "BB"); // Changing the MAC
+                                                                                                  // address
 
         final Main main = new Main();
-        final BufferedReader reader = new BufferedReader(new StringReader(
-            "Ignorable garbage at the start" + "\n"
-                + hcidataOfDevice1.replace(RSSI_BYTE, "01") + "\n"
-                + hcidataOfDevice1.replace(RSSI_BYTE, "02") + "\n"
-                + hcidataOfDevice1.replace(RSSI_BYTE, "03") + "\n"
-                + hcidata2OfDevice2.replace(RSSI_BYTE, "04") + "\n"
-                + hcidata2OfDevice2.replace(RSSI_BYTE, "05") + "\n"
-        ));
+        final BufferedReader reader = new BufferedReader(new StringReader("Ignorable garbage at the start" + "\n"
+                + hcidataOfDevice1.replace(RSSI_BYTE, "01") + "\n" + hcidataOfDevice1.replace(RSSI_BYTE, "02") + "\n"
+                + hcidataOfDevice1.replace(RSSI_BYTE, "03") + "\n" + hcidata2OfDevice2.replace(RSSI_BYTE, "04") + "\n"
+                + hcidata2OfDevice2.replace(RSSI_BYTE, "05") + "\n"));
 
-        // The following are the timestamps on which the hcidump lines above will be read.
-        // By default (see Config.getMeasurementUpdateLimit()) a measurement is discarded
+        // The following are the timestamps on which the hcidump lines above will be
+        // read.
+        // By default (see Config.getMeasurementUpdateLimit()) a measurement is
+        // discarded
         // if it arrives less than 9900 milliseconds after the previous measurement from
         // the same device.
         setClockToMilliseconds(0L, 5000L, 10000L, 11000L, 12000L, 99999L);
@@ -76,7 +77,6 @@ class MainTest {
         TestFixture.setClockToMilliseconds(new FixedInstantsProvider(Arrays.asList(millis)));
     }
 
-
     public static class MockConnection implements DBConnection {
 
         private final ArrayList<EnhancedRuuviMeasurement> measurements = new ArrayList<>();
@@ -98,6 +98,11 @@ class MainTest {
 
         boolean isCloseCalled() {
             return closeCalled;
+        }
+
+        @Override
+        public void save(Point point) {
+
         }
     }
 

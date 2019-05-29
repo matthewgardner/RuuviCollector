@@ -60,4 +60,8 @@ public class InfluxDBConnection implements DBConnection {
     public void close() {
         influxDB.close();
     }
+
+    public void save(Point point) {
+        influxDB.write(point);
+    }
 }

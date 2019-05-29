@@ -58,8 +58,11 @@ public class Main {
      * @return true if the run ends gracefully, false in case of severe errors
      */
     public boolean run() {
+        ExternalMonitorThread monitor = new ExternalMonitorThread();
+        monitor.start();
         BufferedReader reader;
         try {
+
             reader = startHciListeners();
         } catch (IOException ex) {
             LOG.error("Failed to start hci processes", ex);

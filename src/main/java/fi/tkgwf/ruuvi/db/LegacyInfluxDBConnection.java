@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.BatchPoints;
+import org.influxdb.dto.Point;
 
 public class LegacyInfluxDBConnection implements DBConnection {
 
@@ -23,6 +24,10 @@ public class LegacyInfluxDBConnection implements DBConnection {
     public void save(EnhancedRuuviMeasurement measurement) {
         BatchPoints points = InfluxDBConverter.toLegacyInflux(measurement);
         influxDB.write(points);
+    }
+    
+    public void save(Point point) {
+        influxDB.write(point);
     }
 
     @Override
